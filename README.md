@@ -1,6 +1,6 @@
 # RPCS3 Launchers
 
-**Launchers for RPCS3, place the .exe inside the root folder where the rpcs3 executable is located.**               
+**Launchers for RPCS3, place the .exe together with RPCS3_SetPriority.ps1 inside the root folder of RPCS3, where the rpcs3 executable is located.**               
 **Run the .exe as Administrator, "right-click" and "run as..."**                
 **Pressing the Escape button on your keyboard will kill all RPCS3 processes.**              
 **Because I have a slow processor and noticed some lag in running games, for instance Tekken, this program also sets the cpu to realtime.**             
