@@ -1,0 +1,6 @@
+Tray tip
+TrayTip, Title, Text, Seconds, Options
+
+1 = Info icon
+2 = Warning icon
+16 = Error icon

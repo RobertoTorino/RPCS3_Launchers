@@ -1,4 +1,4 @@
- ; YouTube: @game_play267
+; YouTube: @game_play267
 ; Launcher for Tekken Tag Tournament 2
 #NoEnv
 SendMode Input
