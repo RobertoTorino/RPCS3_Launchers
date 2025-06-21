@@ -1,0 +1,1 @@
+SELECT Eboot FROM games WHERE GameId = 'NPJJ00401' LIMIT 1
