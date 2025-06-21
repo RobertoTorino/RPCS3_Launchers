@@ -17,8 +17,7 @@ Gui, Add, GroupBox, x10 y10 w380 h80, Filters
 Gui, Add, CheckBox, vFilterFavorite x20 y30, Favorite
 Gui, Add, CheckBox, vFilterPlayed x100 y30, Played
 Gui, Add, CheckBox, vFilterPSN x180 y30, PSN
-Gui, Add, CheckBox, vFilterFormat x20 y55, Format
-Gui, Add, CheckBox, vFilterGenre x100 y55, Genre
+Gui, Add, CheckBox, vFilterArcadeGame x260 y30, Arcade Games
 
 ; Search section
 Gui, Add, GroupBox, x10 y100 w380 h60, Search
@@ -57,10 +56,8 @@ Search:
         filters.Push("Played = 1")
     if (FilterPSN)
         filters.Push("PSN = 1")
-    if (FilterFormat)
-        filters.Push("Format != ''")
-    if (FilterGenre)
-        filters.Push("Genre != ''")
+    if (FilterArcadeGame)
+        filters.Push("ArcadeGame = 1")
 
     ; Build WHERE clause
     whereClause := "WHERE (GameTitle LIKE '%" . StrReplace(searchTerm, "'", "''") . "%' OR GameId LIKE '%" . StrReplace(searchTerm, "'", "''") . "%')"
@@ -123,7 +120,7 @@ LaunchGame:
     msg := "Launch this game?`n`nGame ID: " . gameId . "`nTitle: " . gameTitle
     MsgBox, 4, Confirm Launch, %msg%
 
-IfMsgBox, Yes
+    IfMsgBox, Yes
     {
         runCommand := "rpcs3.exe --no-gui --fullscreen """ ebootPath """"
         IniWrite, %runCommand%, %A_ScriptDir%\launcher.ini, RUN_GAME, RunCommand
