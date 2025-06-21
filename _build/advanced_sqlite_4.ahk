@@ -310,4 +310,3 @@ Join(sep, ByRef arr) {
 
 GuiClose:
 ExitApp
-
