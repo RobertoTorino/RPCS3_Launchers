@@ -93,8 +93,8 @@ ShowAll:
 return
 
 ExecuteQuery(whereClause) {
-    ; Execute query - including Favorite column
-    sql := "SELECT GameId, GameTitle, Eboot, Icon01, Pic1, Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    ; Execute query - including Favorite column (using Icon0 instead of Icon01)
+    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1, Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
 
     if !db.GetTable(sql, result) {
         MsgBox, 16, Query Error, % "Query failed:`n" . db.ErrorMsg . "`n`nSQL: " . sql
@@ -118,8 +118,8 @@ ExecuteQuery(whereClause) {
             ; Note: SQLiteDB class uses 1-based indexing for row arrays
             GameIds%A_Index% := row[1]
             EbootPaths%A_Index% := row[3]
-            IconPaths%A_Index% := row[4]
-            PicPaths%A_Index% := row[5]
+            IconPaths%A_Index% := row[4]  ; Icon0 column
+            PicPaths%A_Index% := row[5]   ; Pic1 column
             FavoriteStatus%A_Index% := row[6]
 
             ; Add row with star if favorite
