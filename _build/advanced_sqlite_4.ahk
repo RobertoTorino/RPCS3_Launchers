@@ -13,20 +13,23 @@ if !db.OpenDB(A_ScriptDir . "\games.db") {
 Gui, Font, s10, Segoe UI
 
 ; Filter section at the top
-Gui, Add, GroupBox, x10 y10 w380 h60, Filters
+Gui, Add, GroupBox, x10 y10 w380 h80, Filters
 Gui, Add, CheckBox, vFilterPlayed x20 y30, Played
 Gui, Add, CheckBox, vFilterPSN x120 y30, PSN
 Gui, Add, CheckBox, vFilterArcadeGame x220 y30, Arcade Games
 
+; Quick access button
+Gui, Add, Button, gShowAll x20 y55 w80 h20, Show All
+
 ; Search section
-Gui, Add, GroupBox, x10 y80 w380 h60, Search
-Gui, Add, Text, x20 y100, Game title or ID:
-Gui, Add, Edit, vSearchTerm x120 y97 w180 h20
-Gui, Add, Button, gSearch x310 y97 w70 h23, Search
+Gui, Add, GroupBox, x10 y100 w380 h60, Search
+Gui, Add, Text, x20 y120, Game title or ID:
+Gui, Add, Edit, vSearchTerm x120 y117 w180 h20
+Gui, Add, Button, gSearch x310 y117 w70 h23, Search
 
 ; Results section - ListView
-Gui, Add, GroupBox, x10 y150 w380 h220, Results
-Gui, Add, ListView, vResultsList x20 y170 w360 h170 Grid -Multi AltSubmit gListViewClick, Game ID|Title
+Gui, Add, GroupBox, x10 y170 w380 h200, Results
+Gui, Add, ListView, vResultsList x20 y190 w360 h150 Grid -Multi AltSubmit gListViewClick, Game ID|Title
 LV_ModifyCol(1, 80)
 LV_ModifyCol(2, 270)
 
@@ -66,6 +69,15 @@ Search:
     if (filters.MaxIndex() > 0)
         whereClause .= " AND " . Join(" AND ", filters)
 
+    ExecuteQuery(whereClause)
+return
+
+ShowAll:
+    ; Show all games without any filters or search terms
+    ExecuteQuery("")
+return
+
+ExecuteQuery(whereClause) {
     ; Execute query - simple version without Favorite
     sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
 
@@ -102,7 +114,7 @@ Search:
     LV_ModifyCol(2, "AutoHdr")
 
     ClearImagePreview()
-return
+}
 
 ListViewClick:
     ; Handle ListView selection change
