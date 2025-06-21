@@ -115,6 +115,7 @@ ExecuteQuery(whereClause) {
         row := ""
         if result.GetRow(A_Index, row) {
             ; Store all the paths and info in global arrays for later use
+            ; Note: SQLiteDB class uses 1-based indexing for row arrays
             GameIds%A_Index% := row[1]
             EbootPaths%A_Index% := row[3]
             IconPaths%A_Index% := row[4]
