@@ -9,6 +9,96 @@ if !db.OpenDB(A_ScriptDir . "\games.db") {
     ExitApp
 }
 
+; Test basic connectivity first
+MsgBox, 0, Testing, Testing basic database query...
+
+; Test 1: Very simple query
+sql := "SELECT COUNT(*) FROM games"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 1 Failed, Simple COUNT query failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    result.GetRow(1, row)
+    MsgBox, 0, Test 1 Success, Found %row[1]% games in database
+}
+
+; Test 2: Basic SELECT with just GameId and GameTitle
+sql := "SELECT GameId, GameTitle FROM games LIMIT 5"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 2 Failed, Basic SELECT failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    MsgBox, 0, Test 2 Success, Basic SELECT works. Found %result.RowCount% rows
+}
+
+; Test 3: Add WHERE clause
+sql := "SELECT GameId, GameTitle FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 3 Failed, WHERE clause failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    MsgBox, 0, Test 3 Success, WHERE clause works. Found %result.RowCount% rows
+}
+
+; Test 4: Add Eboot column
+sql := "SELECT GameId, GameTitle, Eboot FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 4 Failed, Adding Eboot failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    MsgBox, 0, Test 4 Success, Eboot column works. Found %result.RowCount% rows
+}
+
+; Test 5: Add Icon0 column
+sql := "SELECT GameId, GameTitle, Eboot, Icon0 FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 5 Failed, Adding Icon0 failed:`n%db.ErrorMsg%
+    ; Try alternative - maybe Icon0 has NULL values causing issues
+    sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0 FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
+    if !db.GetTable(sql, result) {
+        MsgBox, 16, Test 5b Failed, Icon0 with IFNULL failed:`n%db.ErrorMsg%
+        ExitApp
+    } else {
+        MsgBox, 0, Test 5b Success, Icon0 with IFNULL works!
+    }
+} else {
+    MsgBox, 0, Test 5 Success, Icon0 column works. Found %result.RowCount% rows
+}
+
+; Test 6: Add Pic1 column
+sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1 FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 6 Failed, Adding Pic1 failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    MsgBox, 0, Test 6 Success, Pic1 column works. Found %result.RowCount% rows
+}
+
+; Test 7: Add Favorite column
+sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1, IFNULL(Favorite, 0) as Favorite FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 7 Failed, Adding Favorite failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    MsgBox, 0, Test 7 Success, All columns work! Found %result.RowCount% rows
+}
+
+; Test 8: Try your specific search
+sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1, IFNULL(Favorite, 0) as Favorite FROM games WHERE (GameTitle LIKE '%Tekken%' OR GameId LIKE '%Tekken%') ORDER BY GameTitle LIMIT 100"
+if !db.GetTable(sql, result) {
+    MsgBox, 16, Test 8 Failed, Tekken search failed:`n%db.ErrorMsg%
+    ExitApp
+} else {
+    MsgBox, 0, Test 8 Success, Tekken search works! Found %result.RowCount% rows
+    ; Show first result
+    if (result.RowCount > 0) {
+        result.GetRow(1, row)
+        MsgBox, 0, First Result, GameId: %row[1]%`nTitle: %row[2]%`nEboot: %row[3]%`nIcon0: %row[4]%`nPic1: %row[5]%`nFavorite: %row[6]%
+    }
+}
+
+MsgBox, 0, All Tests Passed, All database tests passed! Now loading GUI...
+
 ; Create integrated GUI
 Gui, Font, s10, Segoe UI
 
@@ -29,16 +119,16 @@ Gui, Add, Text, x20 y120, Game title or ID:
 Gui, Add, Edit, vSearchTerm x120 y117 w180 h20
 Gui, Add, Button, gSearch x310 y117 w70 h23, Search
 
-; Results section - ListView now shows favorite status
+; Results section
 Gui, Add, GroupBox, x10 y170 w380 h200, Results
 Gui, Add, ListView, vResultsList x20 y190 w360 h150 Grid -Multi AltSubmit gListViewClick, ★|Game ID|Title
-LV_ModifyCol(1, 25)  ; Favorite star column
-LV_ModifyCol(2, 80)  ; Game ID
-LV_ModifyCol(3, 245) ; Title
+LV_ModifyCol(1, 25)
+LV_ModifyCol(2, 80)
+LV_ModifyCol(3, 245)
 
 ; Image preview section
 Gui, Add, GroupBox, x10 y380 w380 h100, Game Preview
-Gui, Add, Picture, vGameIcon x20 y400 w64 h64 gShowLargeImage, ; Small icon preview
+Gui, Add, Picture, vGameIcon x20 y400 w64 h64 gShowLargeImage,
 Gui, Add, Text, vImageStatus x95 y400, Select a game to see its icon
 
 ; Action buttons
@@ -52,14 +142,12 @@ return
 Search:
     Gui, Submit, NoHide
 
-    ; Get search term
     searchTerm := Trim(SearchTerm)
     if (searchTerm = "") {
         MsgBox, 48, Input Required, Please enter a search term.
         return
     }
 
-    ; Build filters array
     filters := []
     if (FilterFavorite)
         filters.Push("Favorite = 1")
@@ -70,38 +158,35 @@ Search:
     if (FilterArcadeGame)
         filters.Push("ArcadeGame = 1")
 
-    ; Build WHERE clause
     whereClause := "WHERE (GameTitle LIKE '%" . StrReplace(searchTerm, "'", "''") . "%' OR GameId LIKE '%" . StrReplace(searchTerm, "'", "''") . "%')"
 
     if (filters.MaxIndex() > 0)
         whereClause .= " AND " . Join(" AND ", filters)
 
-    ; Execute query
     ExecuteQuery(whereClause)
 return
 
 ShowOnlyFavorites:
-    ; Show only favorite games
     whereClause := "WHERE Favorite = 1"
     ExecuteQuery(whereClause)
 return
 
 ShowAll:
-    ; Show all games without any filters
     whereClause := ""
     ExecuteQuery(whereClause)
 return
 
 ExecuteQuery(whereClause) {
-    ; Execute query with all needed columns
-    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1, Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    ; Use IFNULL to handle NULL values
+    sql := "SELECT GameId, GameTitle, IFNULL(Eboot, '') as Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1, IFNULL(Favorite, 0) as Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+
+    MsgBox, 0, Debug SQL, Executing SQL:`n%sql%
 
     if !db.GetTable(sql, result) {
-        MsgBox, 16, Query Error, % "Query failed:`n" . db.ErrorMsg . "`n`nSQL: " . sql
+        MsgBox, 16, Query Error, % "Query failed:`nError: " . db.ErrorMsg . "`nError Code: " . db.ErrorCode . "`n`nSQL: " . sql
         return
     }
 
-    ; Clear and populate ListView
     LV_Delete()
 
     if (result.RowCount = 0) {
@@ -110,36 +195,30 @@ ExecuteQuery(whereClause) {
         return
     }
 
-    ; Add results to ListView and store paths
     Loop, % result.RowCount {
         row := ""
         if result.GetRow(A_Index, row) {
-            ; Store all the paths and info in global arrays for later use
-            ; SQLiteDB class uses 1-based indexing for row arrays
-            GameIds%A_Index% := row[1]      ; GameId
-            GameTitles%A_Index% := row[2]   ; GameTitle
-            EbootPaths%A_Index% := row[3]   ; Eboot
-            IconPaths%A_Index% := row[4]    ; Icon0
-            PicPaths%A_Index% := row[5]     ; Pic1
-            FavoriteStatus%A_Index% := row[6] ; Favorite
+            GameIds%A_Index% := row[1]
+            GameTitles%A_Index% := row[2]
+            EbootPaths%A_Index% := row[3]
+            IconPaths%A_Index% := row[4]
+            PicPaths%A_Index% := row[5]
+            FavoriteStatus%A_Index% := row[6]
 
-            ; Add row with star if favorite
             favoriteIcon := (row[6] = 1) ? "★" : ""
             LV_Add("", favoriteIcon, row[1], row[2])
         }
     }
 
-    ; Auto-resize columns
-    LV_ModifyCol(1, 25)   ; Keep star column small
+    LV_ModifyCol(1, 25)
     LV_ModifyCol(2, "AutoHdr")
     LV_ModifyCol(3, "AutoHdr")
 
-    ; Clear image preview
     ClearImagePreview()
 }
 
+; Rest of the functions...
 ListViewClick:
-    ; Handle ListView selection change
     selectedRow := LV_GetNext()
     if (selectedRow > 0) {
         ShowGameIcon(selectedRow)
@@ -150,50 +229,39 @@ ListViewClick:
 return
 
 ShowGameIcon(rowIndex) {
-    ; Get the icon path for the selected row
     iconPath := IconPaths%rowIndex%
 
     if (iconPath != "" && FileExist(iconPath)) {
-        ; Update the picture control with the icon
         GuiControl,, GameIcon, %iconPath%
         GuiControl,, ImageStatus, Click icon for larger view
-
-        ; Store current selection for large image display
         CurrentSelectedRow := rowIndex
     } else {
-        ; Show placeholder or clear image
-        GuiControl,, GameIcon, ; Clear the image
+        GuiControl,, GameIcon,
         GuiControl,, ImageStatus, No icon available
         CurrentSelectedRow := rowIndex
     }
 }
 
 UpdateFavoriteButton(rowIndex) {
-    ; Update button text based on current favorite status
     isFavorite := FavoriteStatus%rowIndex%
     if (isFavorite = 1) {
-        GuiControl,, Button8, Remove Favorite  ; Button8 is the Toggle Favorite button
+        GuiControl,, Button8, Remove Favorite
     } else {
         GuiControl,, Button8, Add Favorite
     }
 }
 
 ToggleFavorite:
-    ; Get selected row
     selectedRow := LV_GetNext()
     if (!selectedRow) {
         MsgBox, 48, No Selection, Please select a game from the list.
         return
     }
 
-    ; Get game info
     gameId := GameIds%selectedRow%
     currentFavorite := FavoriteStatus%selectedRow%
-
-    ; Toggle favorite status
     newFavorite := (currentFavorite = 1) ? 0 : 1
 
-    ; Update database
     sql := "UPDATE games SET Favorite = " . newFavorite . " WHERE GameId = '" . StrReplace(gameId, "'", "''") . "'"
 
     if !db.Exec(sql) {
@@ -201,24 +269,17 @@ ToggleFavorite:
         return
     }
 
-    ; Update local storage
     FavoriteStatus%selectedRow% := newFavorite
-
-    ; Update ListView star
     favoriteIcon := (newFavorite = 1) ? "★" : ""
     LV_Modify(selectedRow, Col1, favoriteIcon)
-
-    ; Update button text
     UpdateFavoriteButton(selectedRow)
 
-    ; Show confirmation
     statusText := (newFavorite = 1) ? "added to" : "removed from"
     gameTitle := GameTitles%selectedRow%
     MsgBox, 64, Success, % gameTitle . " has been " . statusText . " favorites!"
 return
 
 ShowLargeImage:
-    ; Show the larger image in a new window when icon is clicked
     if (CurrentSelectedRow <= 0)
         return
 
@@ -229,7 +290,6 @@ ShowLargeImage:
         return
     }
 
-    ; Create new GUI for large image
     Gui, 2: New, +Resize +MaximizeBox, Game Image
     Gui, 2: Add, Picture, x10 y10, %picPath%
     Gui, 2: Show, w600 h400
@@ -240,25 +300,21 @@ return
 return
 
 ClearImagePreview() {
-    GuiControl,, GameIcon, ; Clear the image
+    GuiControl,, GameIcon,
     GuiControl,, ImageStatus, Select a game to see its icon
-    GuiControl,, Button8, Toggle Favorite  ; Reset button text
+    GuiControl,, Button8, Toggle Favorite
     CurrentSelectedRow := 0
 }
 
 LaunchGame:
-    ; Get selected row
     selectedRow := LV_GetNext()
     if (!selectedRow) {
         MsgBox, 48, No Selection, Please select a game from the list.
         return
     }
 
-    ; Get game info
     gameId := GameIds%selectedRow%
     gameTitle := GameTitles%selectedRow%
-
-    ; Get the stored Eboot path
     ebootPath := EbootPaths%selectedRow%
 
     if (ebootPath = "") {
@@ -266,7 +322,6 @@ LaunchGame:
         return
     }
 
-    ; Confirm launch
     msg := "Launch this game?`n`nGame ID: " . gameId . "`nTitle: " . gameTitle
     MsgBox, 4, Confirm Launch, %msg%
 
@@ -279,12 +334,10 @@ LaunchGame:
 return
 
 ClearSearch:
-    ; Clear search field and results
     GuiControl,, SearchTerm
     LV_Delete()
     ClearImagePreview()
 
-    ; Clear stored paths
     Loop, 100 {
         GameIds%A_Index% := ""
         GameTitles%A_Index% := ""
@@ -295,12 +348,10 @@ ClearSearch:
     }
 return
 
-; Double-click on ListView item to launch
 ResultsListDoubleClick:
     Gosub, LaunchGame
 return
 
-; Helper function for joining array elements
 Join(sep, ByRef arr) {
     out := ""
     for index, val in arr
