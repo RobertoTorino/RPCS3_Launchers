@@ -106,34 +106,53 @@ return
 Search:
     Gui, Submit, NoHide
 
-    ; Build WHERE clause using your working search logic
-    where := "WHERE (GameTitle LIKE '%" EscapeSQL(SearchTerm) "%' OR GameId LIKE '%" EscapeSQL(SearchTerm) "%')"
+    ; Get the search term and escape it properly
+    searchTerm := Trim(SearchTerm)
+
+    ; Build WHERE clause - fix the string concatenation
+    if (searchTerm != "") {
+        escapedTerm := EscapeSQL(searchTerm)
+        where := "WHERE (GameTitle LIKE '%" . escapedTerm . "%' OR GameId LIKE '%" . escapedTerm . "%')"
+    } else {
+        where := "WHERE 1=1"  ; Always true condition when no search term
+    }
 
     ; Add filters if checked
     if (FilterFavorite)
-        where .= " AND Favorite = 1"
+        where := where . " AND Favorite = 1"
     if (FilterPlayed)
-        where .= " AND Played = 1"
+        where := where . " AND Played = 1"
     if (FilterPSN)
-        where .= " AND PSN = 1"
+        where := where . " AND PSN = 1"
 
-    ; Execute query
-    sql := "SELECT GameId, GameTitle, Format FROM games " where " ORDER BY GameTitle LIMIT 200"
+    ; Execute query - fix string concatenation here too
+    sql := "SELECT GameId, GameTitle, Format FROM games " . where . " ORDER BY GameTitle LIMIT 200"
+
+    ; Debug output (remove after testing)
+    ; MsgBox, 0, Debug, SQL: %sql%
+
     if !db.GetTable(sql, result) {
-        MsgBox, 16, Error, % "Query failed:`n" db.ErrorMsg
+        MsgBox, 16, Error, % "Query failed:`n" . db.ErrorMsg . "`n`nSQL: " . sql
         return
     }
 
     ; Update ListView
     LV_Delete()
-    Loop % result.RowCount {
-        result.GetRow(A_Index, row)
-        LV_Add("", row1, row2, row3)
+
+    if (result.RowCount = 0) {
+        LV_Add("", "No results found", "", "")
+    } else {
+        Loop % result.RowCount {
+            if (result.GetRow(A_Index, row)) {
+                LV_Add("", row[1], row[2], row[3])
+            }
+        }
     }
 
     ; Auto-size columns
     LV_ModifyCol(1, "AutoHdr")
     LV_ModifyCol(2, "AutoHdr")
+    LV_ModifyCol(3, "AutoHdr")
 return
 
 ; Double-click to launch game
@@ -145,22 +164,26 @@ LV_DoubleClick:
     LV_GetText(gameId, row, 1)
     LV_GetText(gameTitle, row, 2)
 
-    ; Get full record
-    if db.GetTable("SELECT Eboot FROM games WHERE GameId = '" EscapeSQL(gameId) "'", result) && result.RowCount {
-        result.GetRow(1, row)
-        ebootPath := row1
-        runCommand := "rpcs3.exe --no-gui --fullscreen """ ebootPath """"
+    ; Get full record - fix string concatenation here too
+    sql := "SELECT Eboot FROM games WHERE GameId = '" . EscapeSQL(gameId) . "'"
+    if db.GetTable(sql, result) && result.RowCount {
+        if (result.GetRow(1, row)) {
+            ebootPath := row[1]
+            runCommand := "rpcs3.exe --no-gui --fullscreen """ . ebootPath . """"
 
-        MsgBox, 4, Confirm Launch, % "Launch this game?`n`n" gameTitle "`n(" gameId ")"
-        IfMsgBox, Yes
-        {
-            IniWrite, %runCommand%, %A_ScriptDir%\launcher.ini, RUN_GAME, RunCommand
-            MsgBox, 64, Success, Ready to launch!
+            MsgBox, 4, Confirm Launch, % "Launch this game?`n`n" . gameTitle . "`n(" . gameId . ")"
+            IfMsgBox, Yes
+            {
+                IniWrite, %runCommand%, %A_ScriptDir%\launcher.ini, RUN_GAME, RunCommand
+                MsgBox, 64, Success, Ready to launch!
+            }
         }
     }
 return
 
 EscapeSQL(str) {
+    if (str = "")
+        return ""
     StringReplace, str, str, ', '', All
     StringReplace, str, str, `%, `%`%, All
     return str
@@ -168,3 +191,4 @@ EscapeSQL(str) {
 
 GuiClose:
 ExitApp
+
