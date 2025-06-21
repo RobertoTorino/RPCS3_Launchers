@@ -361,3 +361,6 @@ Join(sep, ByRef arr) {
 
 GuiClose:
 ExitApp
+
+(23) : ==> The following variable name contains an illegal character:
+"row[1]"
