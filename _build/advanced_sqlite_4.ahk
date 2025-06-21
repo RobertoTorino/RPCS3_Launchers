@@ -63,7 +63,7 @@ Search:
     if (FilterArcadeGame)
         filters.Push("ArcadeGame = 1")
 
-    ; Build WHERE clause
+    ; Build WHERE clause for search
     whereClause := "WHERE (GameTitle LIKE '%" . StrReplace(searchTerm, "'", "''") . "%' OR GameId LIKE '%" . StrReplace(searchTerm, "'", "''") . "%')"
 
     if (filters.MaxIndex() > 0)
@@ -73,16 +73,39 @@ Search:
 return
 
 ShowAll:
-    ; Show all games without any filters or search terms
-    ExecuteQuery("")
+    Gui, Submit, NoHide
+
+    ; Build filters for Show All (no search term)
+    filters := []
+    if (FilterPlayed)
+        filters.Push("Played = 1")
+    if (FilterPSN)
+        filters.Push("PSN = 1")
+    if (FilterArcadeGame)
+        filters.Push("ArcadeGame = 1")
+
+    ; Build WHERE clause for Show All
+    if (filters.MaxIndex() > 0) {
+        whereClause := "WHERE " . Join(" AND ", filters)
+    } else {
+        whereClause := ""  ; No WHERE clause needed
+    }
+
+    ExecuteQuery(whereClause)
 return
 
 ExecuteQuery(whereClause) {
-    ; Execute query - simple version without Favorite
-    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    ; Build SQL with proper syntax
+    if (whereClause = "") {
+        ; No WHERE clause - select all
+        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games ORDER BY GameTitle LIMIT 100"
+    } else {
+        ; With WHERE clause
+        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    }
 
     if !db.GetTable(sql, result) {
-        MsgBox, 16, Query Error, Query failed. Check your search term.
+        MsgBox, 16, Query Error, Query failed. Check your search term or filters.
         return
     }
 
