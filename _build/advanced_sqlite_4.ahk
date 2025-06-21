@@ -9,8 +9,6 @@ if !db.OpenDB(A_ScriptDir . "\games.db") {
     ExitApp
 }
 
-MsgBox, 0, All Tests Passed, All database tests passed! Now loading GUI...
-
 ; Create integrated GUI
 Gui, Font, s10, Segoe UI
 
@@ -89,122 +87,187 @@ ShowAll:
 return
 
 ExecuteQuery(whereClause) {
-    ; Start with a working query that we know passes the tests
-    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1, Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    ; Try the absolute simplest query first
+    sql := "SELECT GameId, GameTitle FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    MsgBox, 0, Trying Simple, Trying simple query: %sql%
 
-    MsgBox, 0, Debug SQL, Executing SQL:`n%sql%
-
-    ; Try the query and check for errors immediately
-    queryResult := db.GetTable(sql, result)
-
-    if (!queryResult) {
-        ; Get detailed error information
-        errMsg := db.ErrorMsg
-        errCode := db.ErrorCode
-        sqlText := db.SQL
-
-        ; Try to get more detailed SQLite error
-        dbErrorCode := db._ErrCode()
-        dbErrorMsg := db._ErrMsg()
-
-        MsgBox, 16, Query Error Details, Query failed:`n`nClass Error Message: %errMsg%`nClass Error Code: %errCode%`n`nDirect SQLite Error Code: %dbErrorCode%`nDirect SQLite Error Message: %dbErrorMsg%`n`nSQL: %sql%
-
-        ; Try a simpler query to isolate the problem
-        MsgBox, 0, Trying Simpler, Trying simpler query without IFNULL...
-
-        simpleSQL := "SELECT GameId, GameTitle FROM games " . whereClause . " ORDER BY GameTitle LIMIT 5"
-        if (db.GetTable(simpleSQL, simpleResult)) {
-            MsgBox, 0, Simple Works, Simple query works! The issue might be with specific columns or IFNULL.
-
-            ; Try adding columns one by one
-            testSQL := "SELECT GameId, GameTitle, Eboot FROM games " . whereClause . " ORDER BY GameTitle LIMIT 5"
-            if (!db.GetTable(testSQL, testResult)) {
-                MsgBox, 16, Eboot Issue, Problem is with Eboot column
-                return
-            }
-
-            testSQL := "SELECT GameId, GameTitle, Eboot, Icon0 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 5"
-            if (!db.GetTable(testSQL, testResult)) {
-                MsgBox, 16, Icon0 Issue, Problem is with Icon0 column
-                return
-            }
-
-            testSQL := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 5"
-            if (!db.GetTable(testSQL, testResult)) {
-                MsgBox, 16, Pic1 Issue, Problem is with Pic1 column
-                return
-            }
-
-            testSQL := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1, Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 5"
-            if (!db.GetTable(testSQL, testResult)) {
-                MsgBox, 16, Favorite Issue, Problem is with Favorite column combination
-                return
-            }
-
-            ; If we get here, use the working simple query
-            MsgBox, 0, Using Simple, All individual columns work. Using simple query.
-            PopulateListView(testResult, false)  ; false = no full column support
-
-        } else {
-            MsgBox, 16, Simple Failed, Even simple query failed. Check your WHERE clause.
-        }
+    if !db.GetTable(sql, result) {
+        MsgBox, 16, Simple Query Failed, Simple query failed - there may be an issue with your WHERE clause or data.
         return
     }
 
-    ; Query succeeded
-    PopulateListView(result, true)  ; true = full column support
+    MsgBox, 0, Simple Success, Simple query worked! Found results. Now trying with more columns...
+
+    ; Try adding Eboot
+    sql := "SELECT GameId, GameTitle, Eboot FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    if !db.GetTable(sql, result) {
+        MsgBox, 16, Eboot Failed, Query failed when adding Eboot column. Using simple version.
+        ; Fall back to simple query
+        sql := "SELECT GameId, GameTitle FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+        db.GetTable(sql, result)
+        PopulateBasic(result)
+        return
+    }
+
+    MsgBox, 0, Eboot Success, Eboot column works! Trying Icon0...
+
+    ; Try adding Icon0
+    sql := "SELECT GameId, GameTitle, Eboot, Icon0 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    if !db.GetTable(sql, result) {
+        MsgBox, 16, Icon0 Failed, Query failed when adding Icon0 column. Using basic version.
+        ; Fall back to basic query
+        sql := "SELECT GameId, GameTitle, Eboot FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+        db.GetTable(sql, result)
+        PopulateWithEboot(result)
+        return
+    }
+
+    MsgBox, 0, Icon0 Success, Icon0 column works! Trying Pic1...
+
+    ; Try adding Pic1
+    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    if !db.GetTable(sql, result) {
+        MsgBox, 16, Pic1 Failed, Query failed when adding Pic1 column. Using version without Pic1.
+        ; Fall back to version without Pic1
+        sql := "SELECT GameId, GameTitle, Eboot, Icon0 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+        db.GetTable(sql, result)
+        PopulateWithIcon(result)
+        return
+    }
+
+    MsgBox, 0, Pic1 Success, Pic1 column works! Trying Favorite...
+
+    ; Try adding Favorite
+    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1, Favorite FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+    if !db.GetTable(sql, result) {
+        MsgBox, 16, Favorite Failed, Query failed when adding Favorite column. Using version without Favorite.
+        ; Fall back to version without Favorite
+        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
+        db.GetTable(sql, result)
+        PopulateWithPic(result)
+        return
+    }
+
+    MsgBox, 0, All Success, All columns work! Using full version.
+    PopulateFull(result)
 }
 
-PopulateListView(result, fullColumns) {
+PopulateBasic(result) {
     LV_Delete()
-
     if (result.RowCount = 0) {
         LV_Add("", "", "No results found", "")
-        ClearImagePreview()
         return
     }
 
     Loop, % result.RowCount {
         row := ""
         if result.GetRow(A_Index, row) {
-            ; Store data using proper variable names for AHK v1
-            tempGameId := row[1]
-            tempGameTitle := row[2]
-
-            GameIds%A_Index% := tempGameId
-            GameTitles%A_Index% := tempGameTitle
-
-            if (fullColumns) {
-                ; Full column support
-                tempEbootPath := row[3]
-                tempIconPath := row[4]
-                tempPicPath := row[5]
-                tempFavorite := row[6]
-
-                EbootPaths%A_Index% := tempEbootPath
-                IconPaths%A_Index% := tempIconPath
-                PicPaths%A_Index% := tempPicPath
-                FavoriteStatus%A_Index% := tempFavorite
-
-                favoriteIcon := (tempFavorite = 1) ? "★" : ""
-                LV_Add("", favoriteIcon, tempGameId, tempGameTitle)
-            } else {
-                ; Limited column support - set defaults
-                EbootPaths%A_Index% := (row.MaxIndex() >= 3) ? row[3] : ""
-                IconPaths%A_Index% := ""
-                PicPaths%A_Index% := ""
-                FavoriteStatus%A_Index% := 0
-
-                LV_Add("", "", tempGameId, tempGameTitle)
-            }
+            GameIds%A_Index% := row[1]
+            GameTitles%A_Index% := row[2]
+            EbootPaths%A_Index% := ""
+            IconPaths%A_Index% := ""
+            PicPaths%A_Index% := ""
+            FavoriteStatus%A_Index% := 0
+            LV_Add("", "", row[1], row[2])
         }
     }
+    LV_ModifyCol(2, "AutoHdr")
+    LV_ModifyCol(3, "AutoHdr")
+}
 
+PopulateWithEboot(result) {
+    LV_Delete()
+    if (result.RowCount = 0) {
+        LV_Add("", "", "No results found", "")
+        return
+    }
+
+    Loop, % result.RowCount {
+        row := ""
+        if result.GetRow(A_Index, row) {
+            GameIds%A_Index% := row[1]
+            GameTitles%A_Index% := row[2]
+            EbootPaths%A_Index% := row[3]
+            IconPaths%A_Index% := ""
+            PicPaths%A_Index% := ""
+            FavoriteStatus%A_Index% := 0
+            LV_Add("", "", row[1], row[2])
+        }
+    }
+    LV_ModifyCol(2, "AutoHdr")
+    LV_ModifyCol(3, "AutoHdr")
+}
+
+PopulateWithIcon(result) {
+    LV_Delete()
+    if (result.RowCount = 0) {
+        LV_Add("", "", "No results found", "")
+        return
+    }
+
+    Loop, % result.RowCount {
+        row := ""
+        if result.GetRow(A_Index, row) {
+            GameIds%A_Index% := row[1]
+            GameTitles%A_Index% := row[2]
+            EbootPaths%A_Index% := row[3]
+            IconPaths%A_Index% := row[4]
+            PicPaths%A_Index% := ""
+            FavoriteStatus%A_Index% := 0
+            LV_Add("", "", row[1], row[2])
+        }
+    }
+    LV_ModifyCol(2, "AutoHdr")
+    LV_ModifyCol(3, "AutoHdr")
+}
+
+PopulateWithPic(result) {
+    LV_Delete()
+    if (result.RowCount = 0) {
+        LV_Add("", "", "No results found", "")
+        return
+    }
+
+    Loop, % result.RowCount {
+        row := ""
+        if result.GetRow(A_Index, row) {
+            GameIds%A_Index% := row[1]
+            GameTitles%A_Index% := row[2]
+            EbootPaths%A_Index% := row[3]
+            IconPaths%A_Index% := row[4]
+            PicPaths%A_Index% := row[5]
+            FavoriteStatus%A_Index% := 0
+            LV_Add("", "", row[1], row[2])
+        }
+    }
+    LV_ModifyCol(2, "AutoHdr")
+    LV_ModifyCol(3, "AutoHdr")
+}
+
+PopulateFull(result) {
+    LV_Delete()
+    if (result.RowCount = 0) {
+        LV_Add("", "", "No results found", "")
+        return
+    }
+
+    Loop, % result.RowCount {
+        row := ""
+        if result.GetRow(A_Index, row) {
+            GameIds%A_Index% := row[1]
+            GameTitles%A_Index% := row[2]
+            EbootPaths%A_Index% := row[3]
+            IconPaths%A_Index% := row[4]
+            PicPaths%A_Index% := row[5]
+            FavoriteStatus%A_Index% := row[6]
+
+            favoriteIcon := (row[6] = 1) ? "★" : ""
+            LV_Add("", favoriteIcon, row[1], row[2])
+        }
+    }
     LV_ModifyCol(1, 25)
     LV_ModifyCol(2, "AutoHdr")
     LV_ModifyCol(3, "AutoHdr")
-
-    ClearImagePreview()
 }
 
 ListViewClick:
@@ -254,8 +317,7 @@ ToggleFavorite:
     sql := "UPDATE games SET Favorite = " . newFavorite . " WHERE GameId = '" . StrReplace(gameId, "'", "''") . "'"
 
     if !db.Exec(sql) {
-        errMsg := db.ErrorMsg
-        MsgBox, 16, Database Error, Failed to update favorite status:`n%errMsg%
+        MsgBox, 16, Database Error, Failed to update favorite status
         return
     }
 
