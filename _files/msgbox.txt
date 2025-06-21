@@ -7,3 +7,7 @@
 | 32                 | Question mark    | Question        |
 | 48                 | Exclamation mark | Exclamation     |
 | 64                 | Info icon        | Asterisk / Info |
+
+
+"Icon0": "games/Ultimate Shooter Pack: Resistance 3 / Killzone 3 [ASIA00048]/PS3_GAME/ICON0.PNG"
+"Pic1": "games/Ultimate Shooter Pack: Resistance 3 / Killzone 3 [ASIA00048]/PS3_GAME/PIC1.PNG"
