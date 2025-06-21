@@ -15,85 +15,108 @@ MsgBox, 0, Testing, Testing basic database query...
 ; Test 1: Very simple query
 sql := "SELECT COUNT(*) FROM games"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 1 Failed, Simple COUNT query failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 1 Failed, Simple COUNT query failed:`n%errMsg%
     ExitApp
 } else {
     result.GetRow(1, row)
-    MsgBox, 0, Test 1 Success, Found %row[1]% games in database
+    rowCount := row[1]
+    MsgBox, 0, Test 1 Success, Found %rowCount% games in database
 }
 
 ; Test 2: Basic SELECT with just GameId and GameTitle
 sql := "SELECT GameId, GameTitle FROM games LIMIT 5"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 2 Failed, Basic SELECT failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 2 Failed, Basic SELECT failed:`n%errMsg%
     ExitApp
 } else {
-    MsgBox, 0, Test 2 Success, Basic SELECT works. Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 2 Success, Basic SELECT works. Found %rowCount% rows
 }
 
 ; Test 3: Add WHERE clause
 sql := "SELECT GameId, GameTitle FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 3 Failed, WHERE clause failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 3 Failed, WHERE clause failed:`n%errMsg%
     ExitApp
 } else {
-    MsgBox, 0, Test 3 Success, WHERE clause works. Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 3 Success, WHERE clause works. Found %rowCount% rows
 }
 
 ; Test 4: Add Eboot column
 sql := "SELECT GameId, GameTitle, Eboot FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 4 Failed, Adding Eboot failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 4 Failed, Adding Eboot failed:`n%errMsg%
     ExitApp
 } else {
-    MsgBox, 0, Test 4 Success, Eboot column works. Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 4 Success, Eboot column works. Found %rowCount% rows
 }
 
 ; Test 5: Add Icon0 column
 sql := "SELECT GameId, GameTitle, Eboot, Icon0 FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 5 Failed, Adding Icon0 failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 5 Failed, Adding Icon0 failed:`n%errMsg%
     ; Try alternative - maybe Icon0 has NULL values causing issues
     sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0 FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
     if !db.GetTable(sql, result) {
-        MsgBox, 16, Test 5b Failed, Icon0 with IFNULL failed:`n%db.ErrorMsg%
+        errMsg := db.ErrorMsg
+        MsgBox, 16, Test 5b Failed, Icon0 with IFNULL failed:`n%errMsg%
         ExitApp
     } else {
         MsgBox, 0, Test 5b Success, Icon0 with IFNULL works!
     }
 } else {
-    MsgBox, 0, Test 5 Success, Icon0 column works. Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 5 Success, Icon0 column works. Found %rowCount% rows
 }
 
 ; Test 6: Add Pic1 column
 sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1 FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 6 Failed, Adding Pic1 failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 6 Failed, Adding Pic1 failed:`n%errMsg%
     ExitApp
 } else {
-    MsgBox, 0, Test 6 Success, Pic1 column works. Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 6 Success, Pic1 column works. Found %rowCount% rows
 }
 
 ; Test 7: Add Favorite column
 sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1, IFNULL(Favorite, 0) as Favorite FROM games WHERE GameTitle LIKE '%a%' LIMIT 5"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 7 Failed, Adding Favorite failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 7 Failed, Adding Favorite failed:`n%errMsg%
     ExitApp
 } else {
-    MsgBox, 0, Test 7 Success, All columns work! Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 7 Success, All columns work! Found %rowCount% rows
 }
 
 ; Test 8: Try your specific search
 sql := "SELECT GameId, GameTitle, Eboot, IFNULL(Icon0, '') as Icon0, IFNULL(Pic1, '') as Pic1, IFNULL(Favorite, 0) as Favorite FROM games WHERE (GameTitle LIKE '%Tekken%' OR GameId LIKE '%Tekken%') ORDER BY GameTitle LIMIT 100"
 if !db.GetTable(sql, result) {
-    MsgBox, 16, Test 8 Failed, Tekken search failed:`n%db.ErrorMsg%
+    errMsg := db.ErrorMsg
+    MsgBox, 16, Test 8 Failed, Tekken search failed:`n%errMsg%
     ExitApp
 } else {
-    MsgBox, 0, Test 8 Success, Tekken search works! Found %result.RowCount% rows
+    rowCount := result.RowCount
+    MsgBox, 0, Test 8 Success, Tekken search works! Found %rowCount% rows
     ; Show first result
     if (result.RowCount > 0) {
         result.GetRow(1, row)
-        MsgBox, 0, First Result, GameId: %row[1]%`nTitle: %row[2]%`nEboot: %row[3]%`nIcon0: %row[4]%`nPic1: %row[5]%`nFavorite: %row[6]%
+        gameId := row[1]
+        gameTitle := row[2]
+        ebootPath := row[3]
+        iconPath := row[4]
+        picPath := row[5]
+        favorite := row[6]
+        MsgBox, 0, First Result, GameId: %gameId%`nTitle: %gameTitle%`nEboot: %ebootPath%`nIcon0: %iconPath%`nPic1: %picPath%`nFavorite: %favorite%
     }
 }
 
@@ -183,7 +206,9 @@ ExecuteQuery(whereClause) {
     MsgBox, 0, Debug SQL, Executing SQL:`n%sql%
 
     if !db.GetTable(sql, result) {
-        MsgBox, 16, Query Error, % "Query failed:`nError: " . db.ErrorMsg . "`nError Code: " . db.ErrorCode . "`n`nSQL: " . sql
+        errMsg := db.ErrorMsg
+        errCode := db.ErrorCode
+        MsgBox, 16, Query Error, Query failed:`nError: %errMsg%`nError Code: %errCode%`n`nSQL: %sql%
         return
     }
 
@@ -198,15 +223,23 @@ ExecuteQuery(whereClause) {
     Loop, % result.RowCount {
         row := ""
         if result.GetRow(A_Index, row) {
-            GameIds%A_Index% := row[1]
-            GameTitles%A_Index% := row[2]
-            EbootPaths%A_Index% := row[3]
-            IconPaths%A_Index% := row[4]
-            PicPaths%A_Index% := row[5]
-            FavoriteStatus%A_Index% := row[6]
+            ; Store data using proper variable names for AHK v1
+            tempGameId := row[1]
+            tempGameTitle := row[2]
+            tempEbootPath := row[3]
+            tempIconPath := row[4]
+            tempPicPath := row[5]
+            tempFavorite := row[6]
 
-            favoriteIcon := (row[6] = 1) ? "★" : ""
-            LV_Add("", favoriteIcon, row[1], row[2])
+            GameIds%A_Index% := tempGameId
+            GameTitles%A_Index% := tempGameTitle
+            EbootPaths%A_Index% := tempEbootPath
+            IconPaths%A_Index% := tempIconPath
+            PicPaths%A_Index% := tempPicPath
+            FavoriteStatus%A_Index% := tempFavorite
+
+            favoriteIcon := (tempFavorite = 1) ? "★" : ""
+            LV_Add("", favoriteIcon, tempGameId, tempGameTitle)
         }
     }
 
@@ -217,7 +250,6 @@ ExecuteQuery(whereClause) {
     ClearImagePreview()
 }
 
-; Rest of the functions...
 ListViewClick:
     selectedRow := LV_GetNext()
     if (selectedRow > 0) {
@@ -265,7 +297,8 @@ ToggleFavorite:
     sql := "UPDATE games SET Favorite = " . newFavorite . " WHERE GameId = '" . StrReplace(gameId, "'", "''") . "'"
 
     if !db.Exec(sql) {
-        MsgBox, 16, Database Error, % "Failed to update favorite status:`n" . db.ErrorMsg
+        errMsg := db.ErrorMsg
+        MsgBox, 16, Database Error, Failed to update favorite status:`n%errMsg%
         return
     }
 
@@ -276,7 +309,7 @@ ToggleFavorite:
 
     statusText := (newFavorite = 1) ? "added to" : "removed from"
     gameTitle := GameTitles%selectedRow%
-    MsgBox, 64, Success, % gameTitle . " has been " . statusText . " favorites!"
+    MsgBox, 64, Success, %gameTitle% has been %statusText% favorites!
 return
 
 ShowLargeImage:
@@ -329,7 +362,7 @@ LaunchGame:
     {
         runCommand := "rpcs3.exe --no-gui --fullscreen """ ebootPath """"
         IniWrite, %runCommand%, %A_ScriptDir%\launcher.ini, RUN_GAME, RunCommand
-        MsgBox, 64, Success, % "Game launch command written to INI:`n" runCommand
+        MsgBox, 64, Success, Game launch command written to INI:`n%runCommand%
     }
 return
 
@@ -361,6 +394,3 @@ Join(sep, ByRef arr) {
 
 GuiClose:
 ExitApp
-
-(23) : ==> The following variable name contains an illegal character:
-"row[1]"
