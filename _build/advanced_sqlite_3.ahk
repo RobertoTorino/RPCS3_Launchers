@@ -123,10 +123,11 @@ LaunchGame:
     msg := "Launch this game?`n`nGame ID: " . gameId . "`nTitle: " . gameTitle
     MsgBox, 4, Confirm Launch, %msg%
 
-    IfMsgBox Yes {
-        runCommand := "rpcs3.exe --no-gui --fullscreen """ . ebootPath . """"
+IfMsgBox, Yes
+    {
+        runCommand := "rpcs3.exe --no-gui --fullscreen """ ebootPath """"
         IniWrite, %runCommand%, %A_ScriptDir%\launcher.ini, RUN_GAME, RunCommand
-        MsgBox, 64, Success, Game launch command written to INI:`n%runCommand%
+        MsgBox, 64, Success, % "Game launch command written to INI:`n" runCommand
     }
 return
 
