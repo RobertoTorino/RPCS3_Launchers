@@ -70,8 +70,8 @@ Search:
     if (filters.MaxIndex() > 0)
         whereClause .= " AND " . Join(" AND ", filters)
 
-    ; Execute query - now including Icon01 and Pic1 columns
-    sql := "SELECT GameId, GameTitle, Eboot, Icon01, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 50"
+    ; Execute query - now including Icon and Pic1 columns
+    sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 50"
 
     if !db.GetTable(sql, result) {
         MsgBox, 16, Query Error, % "Query failed:`n" . db.ErrorMsg
