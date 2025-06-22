@@ -19,6 +19,9 @@ Gui, Add, CheckBox, vFilterPlayed x100 y30, Played
 Gui, Add, CheckBox, vFilterPSN x180 y30, PSN
 Gui, Add, CheckBox, vFilterArcadeGame x260 y30, Arcade Games
 
+; Quick access button
+Gui, Add, Button, gShowAll x20 y55 w80 h20, Show All
+
 ; Search section
 Gui, Add, GroupBox, x10 y100 w380 h60, Search
 Gui, Add, Text, x20 y120, Game title or ID:
@@ -70,8 +73,42 @@ Search:
     if (filters.MaxIndex() > 0)
         whereClause .= " AND " . Join(" AND ", filters)
 
-    ; Execute query - now including Icon01 and Pic1 columns
-    sql := "SELECT GameId, GameTitle, Eboot, Icon01, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 50"
+    ExecuteQuery(whereClause)
+return
+
+ShowAll:
+    Gui, Submit, NoHide
+
+    ; Build filters for Show All (no search term)
+    filters := []
+    if (FilterFavorite)
+        filters.Push("Favorite = 1")
+    if (FilterPlayed)
+        filters.Push("Played = 1")
+    if (FilterPSN)
+        filters.Push("PSN = 1")
+    if (FilterArcadeGame)
+        filters.Push("ArcadeGame = 1")
+
+    ; Build WHERE clause for Show All
+    if (filters.MaxIndex() > 0) {
+        whereClause := "WHERE " . Join(" AND ", filters)
+    } else {
+        whereClause := ""  ; No WHERE clause needed
+    }
+
+    ExecuteQuery(whereClause)
+return
+
+ExecuteQuery(whereClause) {
+    ; Build SQL with proper syntax - using Icon0 (corrected from Icon01)
+    if (whereClause = "") {
+        ; No WHERE clause - select all
+        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games ORDER BY GameTitle LIMIT 50"
+    } else {
+        ; With WHERE clause
+        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 50"
+    }
 
     if !db.GetTable(sql, result) {
         MsgBox, 16, Query Error, % "Query failed:`n" . db.ErrorMsg
@@ -93,8 +130,8 @@ Search:
         if result.GetRow(A_Index, row) {
             ; Store all the paths in global arrays for later use
             EbootPaths%A_Index% := row[3]
-            IconPaths%A_Index% := row[4]
-            PicPaths%A_Index% := row[5]
+            IconPaths%A_Index% := row[4]  ; Icon0 column
+            PicPaths%A_Index% := row[5]   ; Pic1 column
             LV_Add("", row[1], row[2])
         }
     }
@@ -105,7 +142,7 @@ Search:
 
     ; Clear image preview
     ClearImagePreview()
-return
+}
 
 ListViewClick:
     ; Handle ListView selection change
