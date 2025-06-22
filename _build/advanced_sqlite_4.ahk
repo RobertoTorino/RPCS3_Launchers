@@ -14,12 +14,10 @@ Gui, Font, s10, Segoe UI
 
 ; Filter section at the top
 Gui, Add, GroupBox, x10 y10 w380 h80, Filters
-Gui, Add, CheckBox, vFilterPlayed x20 y30, Played
-Gui, Add, CheckBox, vFilterPSN x120 y30, PSN
-Gui, Add, CheckBox, vFilterArcadeGame x220 y30, Arcade Games
-
-; Quick access button
-Gui, Add, Button, gShowAll x20 y55 w80 h20, Show All
+Gui, Add, CheckBox, vFilterFavorite x20 y30, Favorite
+Gui, Add, CheckBox, vFilterPlayed x100 y30, Played
+Gui, Add, CheckBox, vFilterPSN x180 y30, PSN
+Gui, Add, CheckBox, vFilterArcadeGame x260 y30, Arcade Games
 
 ; Search section
 Gui, Add, GroupBox, x10 y100 w380 h60, Search
@@ -27,7 +25,7 @@ Gui, Add, Text, x20 y120, Game title or ID:
 Gui, Add, Edit, vSearchTerm x120 y117 w180 h20
 Gui, Add, Button, gSearch x310 y117 w70 h23, Search
 
-; Results section - ListView
+; Results section - ListView for better display
 Gui, Add, GroupBox, x10 y170 w380 h200, Results
 Gui, Add, ListView, vResultsList x20 y190 w360 h150 Grid -Multi AltSubmit gListViewClick, Game ID|Title
 LV_ModifyCol(1, 80)
@@ -35,7 +33,7 @@ LV_ModifyCol(2, 270)
 
 ; Image preview section
 Gui, Add, GroupBox, x10 y380 w380 h100, Game Preview
-Gui, Add, Picture, vGameIcon x20 y400 w64 h64 gShowLargeImage,
+Gui, Add, Picture, vGameIcon x20 y400 w64 h64 gShowLargeImage, ; Small icon preview
 Gui, Add, Text, vImageStatus x95 y420, Select a game to see its icon
 
 ; Action buttons
@@ -48,6 +46,7 @@ return
 Search:
     Gui, Submit, NoHide
 
+    ; Get search term
     searchTerm := Trim(SearchTerm)
     if (searchTerm = "") {
         MsgBox, 48, Input Required, Please enter a search term.
@@ -56,6 +55,8 @@ Search:
 
     ; Build filters array
     filters := []
+    if (FilterFavorite)
+        filters.Push("Favorite = 1")
     if (FilterPlayed)
         filters.Push("Played = 1")
     if (FilterPSN)
@@ -63,49 +64,17 @@ Search:
     if (FilterArcadeGame)
         filters.Push("ArcadeGame = 1")
 
-    ; Build WHERE clause for search
+    ; Build WHERE clause
     whereClause := "WHERE (GameTitle LIKE '%" . StrReplace(searchTerm, "'", "''") . "%' OR GameId LIKE '%" . StrReplace(searchTerm, "'", "''") . "%')"
 
     if (filters.MaxIndex() > 0)
         whereClause .= " AND " . Join(" AND ", filters)
 
-    ExecuteQuery(whereClause)
-return
-
-ShowAll:
-    Gui, Submit, NoHide
-
-    ; Build filters for Show All (no search term)
-    filters := []
-    if (FilterPlayed)
-        filters.Push("Played = 1")
-    if (FilterPSN)
-        filters.Push("PSN = 1")
-    if (FilterArcadeGame)
-        filters.Push("ArcadeGame = 1")
-
-    ; Build WHERE clause for Show All
-    if (filters.MaxIndex() > 0) {
-        whereClause := "WHERE " . Join(" AND ", filters)
-    } else {
-        whereClause := ""  ; No WHERE clause needed
-    }
-
-    ExecuteQuery(whereClause)
-return
-
-ExecuteQuery(whereClause) {
-    ; Build SQL with proper syntax
-    if (whereClause = "") {
-        ; No WHERE clause - select all
-        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games ORDER BY GameTitle LIMIT 100"
-    } else {
-        ; With WHERE clause
-        sql := "SELECT GameId, GameTitle, Eboot, Icon0, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 100"
-    }
+    ; Execute query - now including Icon01 and Pic1 columns
+    sql := "SELECT GameId, GameTitle, Eboot, Icon01, Pic1 FROM games " . whereClause . " ORDER BY GameTitle LIMIT 50"
 
     if !db.GetTable(sql, result) {
-        MsgBox, 16, Query Error, Query failed. Check your search term or filters.
+        MsgBox, 16, Query Error, % "Query failed:`n" . db.ErrorMsg
         return
     }
 
@@ -122,12 +91,10 @@ ExecuteQuery(whereClause) {
     Loop, % result.RowCount {
         row := ""
         if result.GetRow(A_Index, row) {
-            GameIds%A_Index% := row[1]
-            GameTitles%A_Index% := row[2]
+            ; Store all the paths in global arrays for later use
             EbootPaths%A_Index% := row[3]
             IconPaths%A_Index% := row[4]
             PicPaths%A_Index% := row[5]
-
             LV_Add("", row[1], row[2])
         }
     }
@@ -136,8 +103,9 @@ ExecuteQuery(whereClause) {
     LV_ModifyCol(1, "AutoHdr")
     LV_ModifyCol(2, "AutoHdr")
 
+    ; Clear image preview
     ClearImagePreview()
-}
+return
 
 ListViewClick:
     ; Handle ListView selection change
@@ -162,9 +130,9 @@ ShowGameIcon(rowIndex) {
         CurrentSelectedRow := rowIndex
     } else {
         ; Show placeholder or clear image
-        GuiControl,, GameIcon,
+        GuiControl,, GameIcon, ; Clear the image
         GuiControl,, ImageStatus, No icon available
-        CurrentSelectedRow := rowIndex
+        CurrentSelectedRow := 0
     }
 }
 
@@ -191,7 +159,7 @@ return
 return
 
 ClearImagePreview() {
-    GuiControl,, GameIcon,
+    GuiControl,, GameIcon, ; Clear the image
     GuiControl,, ImageStatus, Select a game to see its icon
     CurrentSelectedRow := 0
 }
@@ -205,8 +173,8 @@ LaunchGame:
     }
 
     ; Get game info
-    gameId := GameIds%selectedRow%
-    gameTitle := GameTitles%selectedRow%
+    LV_GetText(gameId, selectedRow, 1)
+    LV_GetText(gameTitle, selectedRow, 2)
 
     ; Get the stored Eboot path
     ebootPath := EbootPaths%selectedRow%
@@ -224,7 +192,7 @@ LaunchGame:
     {
         runCommand := "rpcs3.exe --no-gui --fullscreen """ ebootPath """"
         IniWrite, %runCommand%, %A_ScriptDir%\launcher.ini, RUN_GAME, RunCommand
-        MsgBox, 64, Success, Game launch command written to INI:`n%runCommand%
+        MsgBox, 64, Success, % "Game launch command written to INI:`n" runCommand
     }
 return
 
@@ -235,9 +203,7 @@ ClearSearch:
     ClearImagePreview()
 
     ; Clear stored paths
-    Loop, 100 {
-        GameIds%A_Index% := ""
-        GameTitles%A_Index% := ""
+    Loop, 50 {
         EbootPaths%A_Index% := ""
         IconPaths%A_Index% := ""
         PicPaths%A_Index% := ""
